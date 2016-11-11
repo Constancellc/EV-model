@@ -30,23 +30,28 @@ for i = 1:T
 end
 
     function [f,g] = likelihood(x)
-        k1 = x(1);
-        k2 = x(2);
-        k3 = x(3);
+        k1 = exp(x(1));
+        k2 = exp(x(2));
+        k3 = exp(x(3));
         var = x(5);
         
         CdA = k1*targetC;
         rollingResistance = k2*targetA;
         massWheels = k3*mass;
-        efficiency = 1/(1+exp(-x(4));
+        
+        % constrain efficiency between 0 and 1
+        efficiency = 1/(1+exp(-x(4)));
         
         efficiencyVector = zeros(T,1);
+        efficiencyDerivatives = zeros(T,1);
         
         for j = 1:T
             if a(j) >= 0
                 efficiencyVector(j) = 1/efficiency;
+                efficiencyDerivatives(j) = 1/efficiency^2;
             else
                 efficiencyVector(j) = efficiency;
+                efficiencyDerivatives(j) = 1;
             end
         end
 
@@ -56,10 +61,24 @@ end
         predictedValue = transpose(efficiencyVector)*P;
         
         f = -0.5*log(2*var^2*pi)-0.5*(predictedValue-observedValue)^2/var^2;
+        
+        % gradients
+        dk1 = 0.5*airDensity*targetC*transpose(efficiencyVector)*(v.^3);
+        dk2 = 0.5*targetA*mass*9.81*transpose(efficiencyVector)*v;
+        dk3 = 0.5*numberOfWheels*mass*transpose(efficiencyVector)*(a.*v);
+        
+        deff = transpose(efficiencyDerivatives)*P;
+        dvar = 1/var*(1-(1/var^2)*(predictedValue-observedValue));
+        
+        dx1 = k1*dk1;
+        dx2 = k2*dk2;
+        dx3 = k3*dk3;
+        
+        dx4 = exp(-x(4))*((1+exp(-x(4)))^-2)*deff;
+        
+        g = [dx1;dx2;dx3;dx4;dvar];
+        
     end
-
-
-
 
 
 end
