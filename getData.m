@@ -29,10 +29,10 @@ k = 1;
 
 for i = 1:length(mass)
     if cycles(i) == 1
-        highway(j,:) = [mass(i),targetA(i),targetC(i)];
+        highway(j,:) = [mpge(i),mass(i),targetA(i),targetC(i)];
         j = j+1;
     elseif cycles(i) == 2
-        udds(k,:) = [mass(i),targetA(i),targetC(i)];
+        udds(k,:) = [mpge(i),mass(i),targetA(i),targetC(i)];
         k = k+1;
     end
 end
