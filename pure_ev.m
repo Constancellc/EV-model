@@ -1,15 +1,17 @@
 function pure_ev
 
+%[highway,udds] = getData;
+
+v0 = csvread('UDDS.csv',0,1); %kmph
+v0 = v0*0.277778; % m/s
+s = sum(v0)/1000; %km
+
 targetC = 0.01;
 targetA = 40;
 mass = 1000;
 mpge = 100;
 
 kmpge = mpge*1.60934;
-
-v0 = csvread('UDDS.csv',0,1); %kmph
-v0 = v0*0.277778; % m/s
-s = sum(v0)/1000; %km
 
 observedValue = 33.7*s/kmpge; %kW
 
@@ -28,6 +30,10 @@ for i = 1:T
     v(i) = (v0(i)+v0(i+1))/2;
     a(i) = v0(i+1)-v0(i);
 end
+
+
+options = optimoptions('fminunc','Algorithm','trust-region','GradObj','on','DerivativeCheck','on');
+fminunc(@likelihood,[log(20),log(0.2),log(0.2),5,1],options)
 
     function [f,g] = likelihood(x)
         k1 = exp(x(1));
@@ -59,8 +65,8 @@ end
             rollingResistance*mass*9.81*v;
         
         predictedValue = transpose(efficiencyVector)*P;
-        
-        f = -0.5*log(2*var^2*pi)-0.5*(predictedValue-observedValue)^2/var^2;
+        d = predictedValue-observedValue;
+        f = 0.5*log(2*var^2*pi)+0.5*transpose(d)*d/var^2;
         
         % gradients
         dk1 = 0.5*airDensity*targetC*transpose(efficiencyVector)*(v.^3);
