@@ -2,42 +2,17 @@ function pure_ev_mse
 % First let's try building a model based on only one drive cycle
 %[highway,udds] = getData;
 
-v = csvread('UDDS.csv',0,1); %kmph
+v = csvread('highways.csv',0,1); %kmph
 v = v*0.277778; % m/s
 s = sum(v)/1000; %km
 s = s/1.60934; % miles
 
-[highway,udds] = getData;
-
-targetC = udds(:,4);
-targetA = udds(:,3);
-mass = udds(:,2);
-mpge = udds(:,1);
+[mass,targetA,~,targetC,mpge] = getPureEVData(1)
+mass = mass/2.2;
 
 N = length(targetC);
 
 observedValue = 33.7*s./mpge; %kWh
-
-% take this next bit out later
-
-keep = [];
-
-for i = 1:N
-    if observedValue(i) <= 5 
-        keep = [keep;i];
-    end
-end
-
-targetC = targetC(keep);
-targetA = targetA(keep);
-mass = mass(keep);
-mpge = mpge(keep);
-
-N = length(targetC);
-
-observedValue = 33.7*s./mpge; %kWh
-
-% end of bit to be removed
 
 d = zeros(N,1);
 
@@ -54,7 +29,7 @@ end
 
 options = optimoptions('fminunc','Algorithm','trust-region','GradObj','on');%,'DerivativeCheck','on');
 
-[x,fval] = fminunc(@squareError,[1,0.005,0.12,.95],options)
+[x,fval] = fminunc(@squareError,[3,-5,0.5,10],options)
 
 error = 33.7*s./d;
 plot([1:N],[mpge,mpge+error])
@@ -70,18 +45,18 @@ avError = sum(abs(error))/N
         
         sigmoid = @(a) (1+exp(-a))^-1;
         dSigmoid = @(a) exp(-a)*(1+exp(-a))^-2;
-        %{
+        % {
         k1 = exp(x(1));
         k2 = exp(x(2));
         k3 = sigmoid(x(3));
         efficiency = sigmoid(x(4));
         %}
-        
+        %{
         k1 = x(1);
         k2 = x(2);
         k3 = x(3);
         efficiency = x(4);
-        
+        %}
         efficiencyVector = zeros(T,1);
         efficiencyDerivatives = zeros(T,1);
         
@@ -124,17 +99,18 @@ avError = sum(abs(error))/N
         end
         
         f = 0.5*transpose(d)*d;
-        %{
+        % {
         dx1 = k1*dk1*2.77778*10^-7;
         dx2 = k2*dk2*2.77778*10^-7;
         dx3 = dSigmoid(x(3))*dk3*2.77778*10^-7;
         dx4 = dSigmoid(x(4))*deff*2.77778*10^-7;
         %}
+        %{
         dx1 = dk1*2.77778*10^-7;
         dx2 = dk2*2.77778*10^-7;
         dx3 = dk3*2.77778*10^-7;
         dx4 = deff*2.77778*10^-7;
-        
+        %}
         g = [dx1;dx2;dx3;dx4];
         
     end
