@@ -33,18 +33,16 @@ for i = 1:T-1
 end
 
 
-options = optimoptions('fminunc','Algorithm','trust-region','GradObj','on');%,'DerivativeCheck','on');
+options = optimoptions('fminunc','Algorithm','trust-region','GradObj','on','DerivativeCheck','on');
 %fminunc(@squareError,[0,0,-3.7906,6.85],options)
-%fminunc(@likelihood,[0.09,-10.7522,-3.7906,6.85,4.27],options)
-
-x =  [4,-2,3.1798,8.4927];
+fminunc(@likelihood,[0.1,-10.5522,-3.5906,6.85],options)
 
 figure(1) 
 plot([1:N],d,'x')
 ylabel('Training Error')
 
 % Now let's get the testing data
-
+%{
 targetC = highway(:,4);
 targetA = highway(:,3);
 mass = highway(:,2);
@@ -73,7 +71,7 @@ E = predict(x);
 
 figure(2)
 plot([1:N],[E,observedValue],'x')
-
+%}
     function E = predict(x)
         
         sigmoid = @(a) (1+exp(-a))^-1;
@@ -172,7 +170,7 @@ plot([1:N],[E,observedValue],'x')
         
     end
         
-%{
+% {
 
 
     function [f,g] = likelihood(x)
@@ -184,7 +182,7 @@ plot([1:N],[E,observedValue],'x')
         k2 = exp(x(2));
         k3 = sigmoid(x(3));
         efficiency = sigmoid(x(4));
-        var = x(5);
+        var = 1;%x(5);
         
         
         efficiencyVector = zeros(T,1);
@@ -238,7 +236,7 @@ plot([1:N],[E,observedValue],'x')
         dx3 = dSigmoid(x(3))*dk3;
         dx4 = dSigmoid(x(4))*deff;
         
-        g = [dx1;dx2;dx3;dx4;dvar];
+        g = [dx1;dx2;dx3;dx4];%dvar];
         
     end
 %}
