@@ -7,7 +7,7 @@ v = v*0.277778; % m/s
 s = sum(v)/1000; %km
 s = s/1.60934; % miles
 
-[mass,targetA,~,targetC,mpge] = getPureEVData(1)
+[mass,targetA,~,targetC,mpge] = getPureEVData(1);
 mass = mass/2.2;
 
 N = length(targetC);

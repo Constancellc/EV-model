@@ -1,6 +1,6 @@
-function [mass,targetA,targetB,targetC,mpge] = getPureEVData(cycle)
+function [mass,targetA,targetB,targetC,hwys,udds] = getPureEVData
 
-data = csvread('../EPA-Code/ev_data2.csv',0,2);
+data = csvread('../EPA-Code/pureEVdata.csv',0,3);
 
 %{
  1 |   horsepower    |
@@ -8,31 +8,22 @@ data = csvread('../EPA-Code/ev_data2.csv',0,2);
  3 |   kerb weight   |   lbs
  4 |    axle ratio   |    -
  5 |    n/v ratio    |    -
- 6 |   drive cycle   |    *
- 7 | fuel efficiency |   MPGe
- 8 |  Target coeff A |   lbf
- 9 |  Target coeff B |  lbf/mph
-10 |  Target coeff C | lbf/mph^2
+ 6 |  Target coeff A |   lbf
+ 7 |  Target coeff B |  lbf/mph
+ 8 |  Target coeff C | lbf/mph^2
+ 9 |   Highways fe   |   MPGe
+10 |     UDDS fe     |   MPGe
 
-* 1 => CD Highway     2 => CD UDDS     0 => Other
 %}
 
-indicies = [];
+mass = data(:,3)/2.2; %kg
+targetA = data(:,6);
+targetB = data(:,7);
+targetC = data(:,8);
 
-for i = 1:length(data)
-    if data(i,6) == cycle
-        indicies = [indicies,i];
-    end
-end
+hwys = data(:,9);
+udds = data(:,10);
 
-mass = data(indicies,3)/2.2;
-mpge = data(indicies,7);
-targetA = data(indicies,8);
-targetB = data(indicies,9);
-targetC = data(indicies,10);
-
-min(targetA)
-max(targetA)
-sum(targetA)/length(indicies)
+size(data)
 end
 
