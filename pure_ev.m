@@ -1,4 +1,4 @@
-function pure_ev
+function efficiency = pure_ev
 % First let's try building a model based on only one drive cycle
 %[highway,udds] = getData;
 
