@@ -1,4 +1,4 @@
-function [f,g,H] = fixedEfficiencyModel()
+function fixedEfficiencyModel()
 
 v_h = csvread('highways.csv',0,1)*0.277778; % m/s
 s_h = sum(v_h)/1000; %km
@@ -41,41 +41,70 @@ for j = 1:N
     P_h(j,:) = F_h.*v_h; P_u(j,:) = F_u.*v_u;
 end
 
-
-
 options = optimoptions('fminunc','Algorithm','trust-region','GradObj','on','DerivativeCheck','on');
-x = fminunc(@likelihood,[0.3;1],options);
+x = fminunc(@likelihood,[0.3;1],options)
 
 efficiency = x(1);
+%factor = x(2);
 sd = exp(x(2));
 
 predictions = [P_h*eff_h,P_u*eff_u];
 error = sd*ones(N,1);
 
-
+% {
 % I really want to covert back to MPGe
 hwys = 75384669*s_h./hwys;
 udds = 75384669*s_u./udds;
-
+% {
 h = 75384669*s_h./predictions(:,1);
-h_l = 75384669*s_h./(predictions(:,1)+error);
-h_u = 75384669*s_h./(predictions(:,1)-error);
+%h_l = 75384669*s_h./(predictions(:,1)+error);
+%h_u = 75384669*s_h./(predictions(:,1)-error);
 
-u = 75384669*s_h./predictions(:,2);
-u_l = 75384669*s_h./(predictions(:,2)+error);
-u_u = 75384669*s_h./(predictions(:,2)-error);
+u = 75384669*s_u./predictions(:,2);
+%u_l = 75384669*s_u./(predictions(:,2)+error);
+%u_u = 75384669*s_u./(predictions(:,2)-error);
+%}
 
+errors_h = h-hwys; errors_u = u-udds;
+
+h_u = zeros(N,1); h_l = zeros(N,1); u_u = zeros(N,1); u_l = zeros(N,1);
+
+for j = 1:N
+    if errors_h(j) <= 0
+        h_u(j) = errors_h(j);
+    else
+        h_l(j) = errors_h(j);
+    end
+    
+    if errors_u(j) <= 0
+        u_u(j) = errors_u(j);
+    else
+        u_l(j) = errors_u(j);
+    end
+end
+av1 = sum(abs(errors_h))/N
+av2 = sum(abs(errors_u))/N
+%}
+% {
 figure(1)
 subplot(2,1,1)
 errorbar([1:N],h,h_l,h_u)
+%plot([1:N],h,'o')
 hold on
 plot([1:N],hwys,'x')
+title('Predicted vs. Observed MPGe on Highways Drive Cycle')
+ylabel('MPGe')
+xlabel('Vehicle No.')
 
 subplot(2,1,2)
 errorbar([1:N],u,u_l,u_u)
+%plot([1:N],u,'o')
 hold on
 plot([1:N],udds,'x')
-
+title('Predicted vs. Observed MPGe on Urban Drive Cycle')
+ylabel('MPGe')
+xlabel('Vehicle No.')
+%}
 
 %{
 % plot varied efficiency
@@ -98,6 +127,7 @@ plot(x2,y2)
 
 BELOW ARE THE PLOTS FOR ENERGY USED RATHER THAN MPGe
 ----------------------------------------------------
+
 figure(1)
 subplot(2,1,1)
 errorbar([1:N],predictions(:,1),error);
@@ -158,8 +188,52 @@ function [f,g,H] = likelihood(x)
 
     H(2,1) = H(1,2);
 
-    %x = x-0.001*H\g;
-    %y(i+1,:) = x;
+end
+
+function [f,g] = likelihood2(x)
+    eff = x(1);
+    k = x(2);
+    var = exp(x(3));
+    
+    eff_h = zeros(T_h,1); eff_u = zeros(T_u,1); deffN_h = zeros(T_h,1);
+    deffK_u = zeros(T_u,1); deffK_h = zeros(T_h,1); deffN_u = zeros(T_u,1);
+        
+    for i = 1:T_u-1
+        if a_u(i) < 0
+            eff_u(i) = k*eff; deffN_u(i) = k; deffK_u(i) = eff;
+        else
+            eff_u(i) = 1/(k*eff); deffN_u(i) = -1/(k*eff^2);
+            deffK_u(i) = -1/(eff*k^2);
+        end
+    end
+
+    for i = 1:T_h-1
+        if a_h(i) < 0
+            eff_h(i) = eff; deffN_h(i) = 1;
+        else
+            eff_h(i) = 1/eff; deffN_h(i) = -1/eff^2;
+        end
+    end
+    
+    d_h = (P_h*eff_h)-hwys;
+    d_u = (P_u*eff_u)-udds; d = [d_h;d_u]
+
+    f = N*log(2*pi)+2*N*log(var)+0.5*(1/var^2)*transpose(d)*d;
+
+    % find gradients
+    g = zeros(3,1);
+
+    g(3) = (2*N/var)-(1/var^3)*(transpose(d)*d); % CHECKED
+    g(3) = g(3)*var;
+
+    for i = 1:N
+        g(1) = g(1) + d_h(i)*P_h(i,:)*deffN_h + d_u(i)*P_u(i,:)*deffN_u;
+        g(2) = g(2) + d_u(i)*P_u(i,:)*deffK_u;
+    end
+
+    g(1) = g(1)/(var^2);
+    g(2) = g(2)/(var^2);
+
 end
 
 %plot(y(:,1),y(:,2))
