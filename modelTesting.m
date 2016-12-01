@@ -4,6 +4,7 @@ v_h = csvread('highways.csv',0,1)*0.277778; % m/s
 s_h = sum(v_h)/1000; %km
 T_h = length(v_h); a_h = zeros(T_h,1); 
 
+
 for j = 1:T_h-1
     a_h(j) = v_h(j+1)-v_h(j);
 end
@@ -207,10 +208,12 @@ avError4 = sqrt(transpose(error_u)*error_u/M);
 
 figure(1)
 subplot(2,1,1)
-bar([1:M],[h,h2])
+b = bar([1:M],[h,h2]);
+b(1).FaceColor = [0.6 0.9 1];
+b(2).FaceColor = [0 0.7 0.7];
 hold on
-scatter([1:M],hwys0(testing),40,'MarkerEdgeColor',[0 .5 .5],...
-              'MarkerFaceColor',[0 .7 .7],...
+scatter([1:M],hwys0(testing),40,'MarkerEdgeColor',[0.3 .3 0.7],...
+              'MarkerFaceColor',[0.3 .3 0.7],...
               'LineWidth',1.5)
 %plot([1:M],hwys0(testing),'x')
 title('Highways Drive Cycle')
@@ -220,10 +223,12 @@ legend('show')
 legend('Model 1','Model 2','Observed')
 
 subplot(2,1,2)
-bar([1:M],[u,u2])
+b2 = bar([1:M],[u,u2]);
+b2(1).FaceColor = [0.6 0.9 1];
+b2(2).FaceColor = [0 0.7 0.7];
 hold on
-scatter([1:M],udds0(testing),40,'MarkerEdgeColor',[0 .5 .5],...
-              'MarkerFaceColor',[0 .7 .7],...
+scatter([1:M],udds0(testing),'MarkerEdgeColor',[0.3 .3 0.7],...
+              'MarkerFaceColor',[0.3 .3 0.7],...
               'LineWidth',1.5)
 %plot([1:M],udds0(testing),'x')
 title('Urban Drive Cycle')
@@ -280,6 +285,10 @@ textbox4 = uicontrol('Style', 'text', 'Units', 'norm','Position',[0.58 0.5 .3 .0
 set(textbox4, 'String', ['rms error: ' num2str(avError4) ' MPGe']);
 %}
 
+    function [f,g] = dependantEfficiency(x)
+        
+        effh = x(1) + 
+        
     function [f,g] = singleEfficiency(x)
         var = 1;
         eff = x(1); %var = exp(x(2));
