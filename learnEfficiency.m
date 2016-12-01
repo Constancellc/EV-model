@@ -1,17 +1,37 @@
 function learnEfficiency
 
-data = csvread('efficiencies.csv');
+y = csvread('efficiencies.csv');
 
-horsepower = data(:,1);
-mass = data(:,3);
-%targetA = data(:,6);
-%targetB = data(:,7);
-%targetC = data(:,8);
+data = csvread('../EPA-Code/pureEVdata.csv',0,3);
 
-efficiencies = data(:,11);
-
-N = length(mass);
 %{
+ 1 |   horsepower    |
+ 2 | # driven wheels |    -
+ 3 |   kerb weight   |   lbs
+ 4 |    axle ratio   |    -
+ 5 |    n/v ratio    |    -
+ 6 |  Target coeff A |   lbf
+ 7 |  Target coeff B |  lbf/mph
+ 8 |  Target coeff C | lbf/mph^2
+ 9 |   Highways fe   |   MPGe
+10 |     UDDS fe     |   MPGe
+
+%}
+%{
+figure(1)
+for i = 1:8
+    subplot(2,4,i)
+    plot(data(:,i),efficiencies,'x')
+end
+%}
+
+% let's assume vehicles are defined by horsepower, weight, axle ratio
+
+X = [data(:,1),data(:,3),data(:,4)];
+
+N = length(X);
+
+% {
 testing = [];
 training = [];
 
@@ -25,53 +45,39 @@ for i = 1:N
     end
 end
 
-test_hp = horsepower(testing); train_hp = horsepower(training);
-test_mass = mass(testing); train_mass = mass(training);
-test_eff = efficiencies(testing); train_eff = efficiencies(training);
+X_training = X(training,:); X_testing = X(testing,:)
+y_training = y(training,:); y_testing = y(testing,:);
 %}
 
-% let's try KNN as a concept
-K=3;
-prediction = zeros(N,1);
 
-for i = 1:N
-    distances = zeros(N,2);
+% {
+% let's try KNN as a concept
+K=2;
+
+M = length(testing);
+prediction = zeros(M,1);
+
+for i = 1:M
+    distance = zeros(N-M,2);
     
-    for j = 1:N
-        diff = [mass(i);horsepower(i)]-[mass(j);horsepower(j)];
-        distances(j,:) = [norm(diff,2),j];
+    for j = 1:(N-M)
+        gap = X_training(j,:)-X_testing(i,:)
+        distance(j,:) = [norm(gap,2),j];
     end
 
-    distances = sortrows(distances);
+    distance = sortrows(distance)
+    
     % find k closest points
-    index = distances(1:K,2);
+    index = distance(1:K,2)
 
     f = 0;
 
     for j = 1:K
-        f = f + efficiencies(index(j));
+        f = f + y_training(index(j));
     end
 
     prediction(i) = f/K;
 end
 
 figure(1)
-plot([1:N],[efficiencies,prediction])
-
-av_error = sum(abs(efficiencies-prediction))/N
-end
-
-
-%{
-% for each testing point
-for i = 1:length(testing)
-    distances = zeros(length(training),2);
-    
-    %compute distance to every training point
-    for j = 1:length(training)
-        distances(j,:) = [norm([test_hp(i);test_mass(i)]-...
-            [train_hp(j);train_mass(j)],2),j];
-    end
-%}    
-    
-
+plot([1:M],[prediction,y_testing],'x')
