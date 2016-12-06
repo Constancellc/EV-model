@@ -2,8 +2,7 @@ function rmse = modelTesting
 %testingDataSet
 v_h = csvread('highways.csv',0,1)*0.277778; % m/s
 s_h = sum(v_h)/1000; %km
-T_h = length(v_h); a_h = zeros(T_h,1); 
-
+T_h = length(v_h); a_h = zeros(T_h,1); vh_av = s_h*1000/T_h;
 
 for j = 1:T_h-1
     a_h(j) = v_h(j+1)-v_h(j);
@@ -11,11 +10,14 @@ end
 
 v_u = csvread('udds.csv',0,1)*0.277778; % m/s
 s_u = sum(v_u)/1000; %km
-T_u = length(v_u); a_u = zeros(T_u,1); 
+T_u = length(v_u); a_u = zeros(T_u,1); vu_av = s_u*1000/T_u;
 
 for j = 1:T_u-1
     a_u(j) = v_u(j+1)-v_u(j);
 end
+
+a_rms = [sqrt(transpose(a_h)*a_h/T_h);sqrt(transpose(a_u)*a_u/T_u)];
+
 
 data = csvread('../EPA-Code/pureEVdata.csv',0,3);
 
@@ -81,6 +83,7 @@ for j = 1:N
     P_h(j,:) = F_h.*v_h; P_u(j,:) = F_u.*v_u;
 end
 
+
 % Start with single efficiency case
 
 options = optimoptions('fminunc','Algorithm','trust-region','GradObj','on','DerivativeCheck','on');
@@ -125,8 +128,8 @@ end
 predH = P_hT*effh; predU = P_uT*effu;
 
 % converting back to MPGe
-h = 75384669*s_h./predH; u = 75384669*s_u./predU;
-
+%h = 75384669*s_h./predH; u = 75384669*s_u./predU;
+h = predH; u = predU;
 error_h = h-hwys0(testing); error_u = u-udds0(testing);
 
 avError1 = sqrt(transpose(error_h)*error_h/M);
@@ -195,12 +198,56 @@ for j = 1:M
 end
 
 % converting back to MPGe
-h2 = 75384669*s_h./predH; u2 = 75384669*s_u./predU;
+%h2 = 75384669*s_h./predH; u2 = 75384669*s_u./predU;
+h2 = predH; u2 = predU;
 
 error_h = h2-hwys0(testing); error_u = u2-udds0(testing);
 
 avError3 = sqrt(transpose(error_h)*error_h/M);
 avError4 = sqrt(transpose(error_u)*error_u/M);
+
+% Now let's do the latest model - training
+
+options = optimoptions('fminunc','Algorithm','trust-region','GradObj','on');%,'DerivativeCheck','on');
+options.MaxFunctionEvaluations = 3000;
+x = fminunc(@dependantEfficiency,[1.1304;-2.6926;-140.3793],options)
+
+% now testing
+
+for j = 1:M
+    effh = zeros(T_h,1); effu = zeros(T_u,1);
+    
+    heff = x(1)+x(2)/vh_av+x(3)/(a_rms(1)*mTest(j));
+    ueff = x(1)+x(2)/vu_av+x(3)/(a_rms(2)*mTest(j));
+    %heff = 1.1304-2.6926/vh_av-140.3793/(a_rms(1)*mTest(j));
+    %ueff = 1.1304-2.6926/vu_av-140.3793/(a_rms(2)*mTest(j));
+    
+    for i = 1:T_u-1
+        if a_u(i) < 0
+            effu(i) = ueff;
+        else
+            effu(i) = 1/ueff;
+        end
+    end
+
+    for i = 1:T_h-1
+        if a_h(i) < 0
+            effh(i) = heff;
+        else
+            effh(i) = 1/heff;
+        end
+    end
+
+    predH(j) = P_hT(j,:)*effh; predU(j) = P_uT(j,:)*effu;
+end
+
+% converting back to MPGe
+%h3 = 75384669*s_h./predH; u3 = 75384669*s_u./predU;
+h3 = predH; u3 = predU;
+error_h = h3-hwys0(testing); error_u = u3-udds0(testing);
+
+avError5 = sqrt(transpose(error_h)*error_h/M);
+avError6 = sqrt(transpose(error_u)*error_u/M);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   THIS SECTION PLOTS THE GRAPH
@@ -208,11 +255,11 @@ avError4 = sqrt(transpose(error_u)*error_u/M);
 
 figure(1)
 subplot(2,1,1)
-b = bar([1:M],[h,h2]);
+b = bar([1:M],2.77778e-7*[h,h2,h3]);
 b(1).FaceColor = [0.6 0.9 1];
 b(2).FaceColor = [0 0.7 0.7];
 hold on
-scatter([1:M],hwys0(testing),40,'MarkerEdgeColor',[0.3 .3 0.7],...
+scatter([1:M],2.77778e-7*hwys(testing),40,'MarkerEdgeColor',[0.3 .3 0.7],...
               'MarkerFaceColor',[0.3 .3 0.7],...
               'LineWidth',1.5)
 %plot([1:M],hwys0(testing),'x')
@@ -223,11 +270,11 @@ legend('show')
 legend('Model 1','Model 2','Observed')
 
 subplot(2,1,2)
-b2 = bar([1:M],[u,u2]);
+b2 = bar([1:M],2.77778e-7*[u,u2,u3]);
 b2(1).FaceColor = [0.6 0.9 1];
 b2(2).FaceColor = [0 0.7 0.7];
 hold on
-scatter([1:M],udds0(testing),'MarkerEdgeColor',[0.3 .3 0.7],...
+scatter([1:M],2.77778e-7*udds(testing),'MarkerEdgeColor',[0.3 .3 0.7],...
               'MarkerFaceColor',[0.3 .3 0.7],...
               'LineWidth',1.5)
 %plot([1:M],udds0(testing),'x')
@@ -246,7 +293,7 @@ set(textbox3, 'String', ['Model 1 RMSE: ' num2str(round(avError2)) ' MPGe']);
 textbox4 = uicontrol('Style', 'text', 'Units', 'norm','Position',[0.91 0.15 .09 .1]);
 set(textbox4, 'String', ['Model 2 RMSE: ' num2str(round(avError4)) ' MPGe']);
 
-rmse = [avError1;avError2;avError3;avError4];
+rmse = [avError1;avError2;avError3;avError4;avError5;avError6];
 
 %{
 subplot(2,2,1)
@@ -287,7 +334,58 @@ set(textbox4, 'String', ['rms error: ' num2str(avError4) ' MPGe']);
 
     function [f,g] = dependantEfficiency(x)
         
-        effh = x(1) + 
+        var = 1;%exp(x(1));
+        k1 = x(1); k2 = x(2); k3 = x(3);
+
+        predictions = zeros(N,2);
+        g = zeros(3,1);
+
+        for v = 1:N
+            eff1 = k1 + k2/vh_av + k3/(mTrain(v)*a_rms(1));
+            eff2 = k1 + k2/vu_av + k3/(mTrain(v)*a_rms(2));
+            
+            eff_h = zeros(T_h,1); eff_u = zeros(T_u,1);
+            deff_h = zeros(T_h,1); deff_u = zeros(T_u,1);
+
+            for i = 1:T_u-1
+                if a_u(i) < 0
+                    eff_u(i) = eff2; deff_u(i) = 1;
+                else
+                    eff_u(i) = 1/(eff2); deff_u(i) = -1/(eff2^2);
+                end
+            end
+
+            for i = 1:T_h-1
+                if a_h(i) < 0
+                    eff_h(i) = eff1; deff_h(i) = 1;
+                else
+                    eff_h(i) = 1/eff1; deff_h(i) = -1/eff1^2;
+                end
+            end
+
+            predictions(v,:) = [P_h(v,:)*eff_h,P_u(v,:)*eff_u];
+            dH = predictions(v,1)-y_h(v); dU = predictions(v,2)-y_u(v);
+
+            %g(v+1) = (1/var^2)*(dH*P_h(v,:)*deff_h+dU*P_u(v,:)*deff_u);
+            g(1) = g(1) + (1/var^2)*(dH*P_h(v,:)*deff_h+dU*P_u(v,:)*deff_u);
+            g(2) = g(2) + (1/var^2)*(dH*P_h(v,:)*deff_h/vh_av...
+                +dU*P_u(v,:)*deff_u/vu_av);
+            g(3) = g(3) + (1/var^2)*(dH*P_h(v,:)*deff_h/(mTrain(v)*a_rms(1))+...
+                dU*P_u(v,:)*deff_u/(mTrain(v)*a_rms(2)));
+
+        end
+    
+    d = predictions-[y_h,y_u];
+    d = [d(:,1);d(:,2)];
+
+    %f = N*log(2*pi)+2*N*log(var)+0.5*(1/var^2)*transpose(d)*d;
+
+    f = 0.5*transpose(d)*d;
+    %g(1) = (2*N/var)-(1/var^3)*(transpose(d)*d); % CHECKED
+    %g(1) = g(1)*var;
+
+    end
+
         
     function [f,g] = singleEfficiency(x)
         var = 1;
