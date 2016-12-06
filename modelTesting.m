@@ -4,6 +4,7 @@ v_h = csvread('highways.csv',0,1)*0.277778; % m/s
 s_h = sum(v_h)/1000; %km
 T_h = length(v_h); a_h = zeros(T_h,1); vh_av = s_h*1000/T_h;
 
+
 for j = 1:T_h-1
     a_h(j) = v_h(j+1)-v_h(j);
 end
@@ -17,7 +18,6 @@ for j = 1:T_u-1
 end
 
 a_rms = [sqrt(transpose(a_h)*a_h/T_h);sqrt(transpose(a_u)*a_u/T_u)];
-
 
 data = csvread('../EPA-Code/pureEVdata.csv',0,3);
 
@@ -83,7 +83,6 @@ for j = 1:N
     P_h(j,:) = F_h.*v_h; P_u(j,:) = F_u.*v_u;
 end
 
-
 % Start with single efficiency case
 
 options = optimoptions('fminunc','Algorithm','trust-region','GradObj','on','DerivativeCheck','on');
@@ -129,8 +128,9 @@ predH = P_hT*effh; predU = P_uT*effu;
 
 % converting back to MPGe
 %h = 75384669*s_h./predH; u = 75384669*s_u./predU;
-h = predH; u = predU;
-error_h = h-hwys0(testing); error_u = u-udds0(testing);
+h = predH*2.77778e-7; u = predU*2.77778e-7;
+
+error_h = h-hwys(testing)*2.77778e-7; error_u = u-udds(testing)*2.77778e-7;
 
 avError1 = sqrt(transpose(error_h)*error_h/M);
 avError2 = sqrt(transpose(error_u)*error_u/M);
@@ -199,55 +199,57 @@ end
 
 % converting back to MPGe
 %h2 = 75384669*s_h./predH; u2 = 75384669*s_u./predU;
-h2 = predH; u2 = predU;
+h2 = predH*2.77778e-7; u2 = predU*2.77778e-7;
 
-error_h = h2-hwys0(testing); error_u = u2-udds0(testing);
+error_h = h2-hwys(testing)*2.77778e-7; error_u = u2-udds(testing)*2.77778e-7;
 
 avError3 = sqrt(transpose(error_h)*error_h/M);
 avError4 = sqrt(transpose(error_u)*error_u/M);
 
-% Now let's do the latest model - training
-
+%{
 options = optimoptions('fminunc','Algorithm','trust-region','GradObj','on');%,'DerivativeCheck','on');
-options.MaxFunctionEvaluations = 3000;
-x = fminunc(@dependantEfficiency,[1.1304;-2.6926;-140.3793],options)
+x = fminunc(@dependantEfficiency2,[ones(2,1)],options);
 
-% now testing
+x
+
+predH = zeros(M,1); predU = zeros(M,1);
 
 for j = 1:M
-    effh = zeros(T_h,1); effu = zeros(T_u,1);
-    
-    heff = x(1)+x(2)/vh_av+x(3)/(a_rms(1)*mTest(j));
-    ueff = x(1)+x(2)/vu_av+x(3)/(a_rms(2)*mTest(j));
-    %heff = 1.1304-2.6926/vh_av-140.3793/(a_rms(1)*mTest(j));
-    %ueff = 1.1304-2.6926/vu_av-140.3793/(a_rms(2)*mTest(j));
-    
+    eh = x(1) + x(2)*vh_av + x(3)*a_rms(1)*mTest(j);
+    eu = x(1) + x(2)*vu_av + x(3)*a_rms(2)*mTest(j);
+            
+    effh = zeros(T_h,1); effu = zeros(T_u,1); 
+        
     for i = 1:T_u-1
         if a_u(i) < 0
-            effu(i) = ueff;
+            effu(i) = eu;
         else
-            effu(i) = 1/ueff;
+            effu(i) = 1/eu;
         end
     end
-
+    
     for i = 1:T_h-1
         if a_h(i) < 0
-            effh(i) = heff;
+            effh(i) = eh;
         else
-            effh(i) = 1/heff;
+            effh(i) = 1/eh;
         end
     end
-
+    
     predH(j) = P_hT(j,:)*effh; predU(j) = P_uT(j,:)*effu;
 end
+% }
+
+%predH = P_hT*eff_h; predU = P_uT*eff_u;
 
 % converting back to MPGe
-%h3 = 75384669*s_h./predH; u3 = 75384669*s_u./predU;
-h3 = predH; u3 = predU;
+h3 = 75384669*s_h./predH; u3 = 75384669*s_u./predU;
+
 error_h = h3-hwys0(testing); error_u = u3-udds0(testing);
 
-avError5 = sqrt(transpose(error_h)*error_h/M);
-avError6 = sqrt(transpose(error_u)*error_u/M);
+avError5 = sqrt(transpose(error_h)*error_h/M)
+avError6 = sqrt(transpose(error_u)*error_u/M)
+%}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   THIS SECTION PLOTS THE GRAPH
@@ -255,45 +257,47 @@ avError6 = sqrt(transpose(error_u)*error_u/M);
 
 figure(1)
 subplot(2,1,1)
-b = bar([1:M],2.77778e-7*[h,h2,h3]);
+b = bar([1:M],[h,h2]);
 b(1).FaceColor = [0.6 0.9 1];
 b(2).FaceColor = [0 0.7 0.7];
 hold on
-scatter([1:M],2.77778e-7*hwys(testing),40,'MarkerEdgeColor',[0.3 .3 0.7],...
+scatter([1:M],hwys(testing)*2.77778e-7,40,'MarkerEdgeColor',[0.3 .3 0.7],...
               'MarkerFaceColor',[0.3 .3 0.7],...
               'LineWidth',1.5)
 %plot([1:M],hwys0(testing),'x')
 title('Highways Drive Cycle')
-ylabel('MPGe')
+%ylabel('MPGe')
+ylabel('kWh')
 xlabel('Vehicle No.')
 legend('show')
 legend('Model 1','Model 2','Observed')
 
 subplot(2,1,2)
-b2 = bar([1:M],2.77778e-7*[u,u2,u3]);
+b2 = bar([1:M],[u,u2]);
 b2(1).FaceColor = [0.6 0.9 1];
 b2(2).FaceColor = [0 0.7 0.7];
 hold on
-scatter([1:M],2.77778e-7*udds(testing),'MarkerEdgeColor',[0.3 .3 0.7],...
+scatter([1:M],udds(testing)*2.77778e-7,'MarkerEdgeColor',[0.3 .3 0.7],...
               'MarkerFaceColor',[0.3 .3 0.7],...
               'LineWidth',1.5)
 %plot([1:M],udds0(testing),'x')
 title('Urban Drive Cycle')
-ylabel('MPGe')
+%ylabel('MPGe')
+ylabel('kWh')
 xlabel('Vehicle No.')
 legend('show')
 legend('Model 1','Model 2','Observed')
 
 textbox1 = uicontrol('Style', 'text', 'Units', 'norm','Position',[0.91 0.74 .09 .1]);
-set(textbox1, 'String', ['Model 1 RMSE: ' num2str(round(avError1)) ' MPGe']);
+set(textbox1, 'String', ['Model 1 RMSE: ' num2str(round(avError1*1000)/1000) ' kWh']);
 textbox2 = uicontrol('Style', 'text', 'Units', 'norm','Position',[0.91 0.62 .09 .1]);
-set(textbox2, 'String', ['Model 2 RMSE: ' num2str(round(avError3)) ' MPGe']);
+set(textbox2, 'String', ['Model 2 RMSE: ' num2str(round(avError3*1000)/1000) ' kWh']);
 textbox3 = uicontrol('Style', 'text', 'Units', 'norm','Position',[0.91 0.27 .09 .1]);
-set(textbox3, 'String', ['Model 1 RMSE: ' num2str(round(avError2)) ' MPGe']);
+set(textbox3, 'String', ['Model 1 RMSE: ' num2str(round(avError2*1000)/1000) ' kWh']);
 textbox4 = uicontrol('Style', 'text', 'Units', 'norm','Position',[0.91 0.15 .09 .1]);
-set(textbox4, 'String', ['Model 2 RMSE: ' num2str(round(avError4)) ' MPGe']);
+set(textbox4, 'String', ['Model 2 RMSE: ' num2str(round(avError4*1000)/1000) ' kWh']);
 
-rmse = [avError1;avError2;avError3;avError4;avError5;avError6];
+rmse = [avError1;avError2;avError3;avError4];
 
 %{
 subplot(2,2,1)
@@ -334,59 +338,98 @@ set(textbox4, 'String', ['rms error: ' num2str(avError4) ' MPGe']);
 
     function [f,g] = dependantEfficiency(x)
         
-        var = 1;%exp(x(1));
-        k1 = x(1); k2 = x(2); k3 = x(3);
-
         predictions = zeros(N,2);
         g = zeros(3,1);
-
+        
         for v = 1:N
-            eff1 = k1 + k2/vh_av + k3/(mTrain(v)*a_rms(1));
-            eff2 = k1 + k2/vu_av + k3/(mTrain(v)*a_rms(2));
+            efh = x(1) + x(2)*vh_av + x(3)*a_rms(1)*mTrain(v);
+            efu = x(1) + x(2)*vu_av + x(3)*a_rms(2)*mTrain(v);
             
-            eff_h = zeros(T_h,1); eff_u = zeros(T_u,1);
+            eff_h = zeros(T_h,1); eff_u = zeros(T_u,1); 
             deff_h = zeros(T_h,1); deff_u = zeros(T_u,1);
-
+        
             for i = 1:T_u-1
                 if a_u(i) < 0
-                    eff_u(i) = eff2; deff_u(i) = 1;
+                    eff_u(i) = efu; deff_u(i) = 1;
                 else
-                    eff_u(i) = 1/(eff2); deff_u(i) = -1/(eff2^2);
+                    eff_u(i) = 1/efu; deff_u(i) = -1/efu^2;
                 end
             end
 
             for i = 1:T_h-1
                 if a_h(i) < 0
-                    eff_h(i) = eff1; deff_h(i) = 1;
+                    eff_h(i) = efh; deff_h(i) = 1;
                 else
-                    eff_h(i) = 1/eff1; deff_h(i) = -1/eff1^2;
+                    eff_h(i) = 1/efh; deff_h(i) = -1/efh^2;
+                end
+            end
+            
+            predictions(v,:) = [P_h(v,:)*eff_h,P_u(v,:)*eff_u];
+            dH = predictions(v,1)-y_h(v); dU = predictions(v,2)-y_u(v);
+            
+            %d_h(v) = (P_h(v,:)*eff_h)-hwys(v);
+            %d_u(v) = (P_u(v,:)*eff_u)-udds(v);
+
+            g(1) = g(1) + 2*dH*P_h(v,:)*deff_h + 2*dU*P_u(v,:)*deff_u;
+            g(2) = g(2) + 2*dH*P_h(v,:)*deff_h*(vh_av) + ...
+                2*dU*P_u(v,:)*deff_u*vu_av;
+            g(3) = g(3) + 2*dH*P_h(v,:)*deff_h*a_rms(1)*mTrain(v) + ...
+                2*dU*P_u(v,:)*deff_u*a_rms(2)*mTrain(v);
+        end
+        
+        d = predictions-[y_h,y_u];
+        d = [d(:,1);d(:,2)];
+        
+        f=transpose(d)*d;
+    end
+
+    function [f,g] = dependantEfficiency2(x)
+        
+        predictions = zeros(N,2);
+        g = zeros(2,1);
+        
+        for v = 1:N
+            efh = x(1) + x(2)*mTrain(v);
+            efu = x(1) + x(2)*mTrain(v);
+            
+            eff_h = zeros(T_h,1); eff_u = zeros(T_u,1); 
+            deff_h = zeros(T_h,1); deff_u = zeros(T_u,1);
+        
+            for i = 1:T_u-1
+                if a_u(i) < 0
+                    eff_u(i) = efu; deff_u(i) = 1;
+                else
+                    eff_u(i) = 1/efu; deff_u(i) = -1/efu^2;
                 end
             end
 
+            for i = 1:T_h-1
+                if a_h(i) < 0
+                    eff_h(i) = efh; deff_h(i) = 1;
+                else
+                    eff_h(i) = 1/efh; deff_h(i) = -1/efh^2;
+                end
+            end
+            
             predictions(v,:) = [P_h(v,:)*eff_h,P_u(v,:)*eff_u];
             dH = predictions(v,1)-y_h(v); dU = predictions(v,2)-y_u(v);
+            
+            %d_h(v) = (P_h(v,:)*eff_h)-hwys(v);
+            %d_u(v) = (P_u(v,:)*eff_u)-udds(v);
 
-            %g(v+1) = (1/var^2)*(dH*P_h(v,:)*deff_h+dU*P_u(v,:)*deff_u);
-            g(1) = g(1) + (1/var^2)*(dH*P_h(v,:)*deff_h+dU*P_u(v,:)*deff_u);
-            g(2) = g(2) + (1/var^2)*(dH*P_h(v,:)*deff_h/vh_av...
-                +dU*P_u(v,:)*deff_u/vu_av);
-            g(3) = g(3) + (1/var^2)*(dH*P_h(v,:)*deff_h/(mTrain(v)*a_rms(1))+...
-                dU*P_u(v,:)*deff_u/(mTrain(v)*a_rms(2)));
-
+            g(1) = g(1) + 2*dH*P_h(v,:)*deff_h + 2*dU*P_u(v,:)*deff_u;
+            g(2) = g(2) + 2*dH*P_h(v,:)*deff_h*mTrain(v) + ...
+                2*dU*P_u(v,:)*deff_u*mTrain(v);
         end
-    
-    d = predictions-[y_h,y_u];
-    d = [d(:,1);d(:,2)];
-
-    %f = N*log(2*pi)+2*N*log(var)+0.5*(1/var^2)*transpose(d)*d;
-
-    f = 0.5*transpose(d)*d;
-    %g(1) = (2*N/var)-(1/var^3)*(transpose(d)*d); % CHECKED
-    %g(1) = g(1)*var;
-
-    end
-
         
+        d = predictions-[y_h,y_u];
+        d = [d(:,1);d(:,2)];
+        
+        f=transpose(d)*d;
+    end
+        
+
+
     function [f,g] = singleEfficiency(x)
         var = 1;
         eff = x(1); %var = exp(x(2));
@@ -476,4 +519,48 @@ set(textbox4, 'String', ['rms error: ' num2str(avError4) ' MPGe']);
     %g(1) = g(1)*var;
 
     end
+
+function [f,g] = cycleSpecificEfficiency(x)
+    
+    eff = x(1);
+    k = x(2);
+    var = 1;
+    
+    eff_h = zeros(T_h,1); eff_u = zeros(T_u,1); deffN_h = zeros(T_h,1);
+    deffK_u = zeros(T_u,1); deffK_h = zeros(T_h,1); deffN_u = zeros(T_u,1);
+        
+    for i = 1:T_u-1
+        if a_u(i) < 0
+            eff_u(i) = k*eff; deffN_u(i) = k; deffK_u(i) = eff;
+        else
+            eff_u(i) = 1/(k*eff); deffN_u(i) = -1/(k*eff^2);
+            deffK_u(i) = -1/(eff*k^2);
+        end
+    end
+
+    for i = 1:T_h-1
+        if a_h(i) < 0
+            eff_h(i) = eff; deffN_h(i) = 1;
+        else
+            eff_h(i) = 1/eff; deffN_h(i) = -1/eff^2;
+        end
+    end
+    
+    d_h = (P_h*eff_h)-y_h;
+    d_u = (P_u*eff_u)-y_u; d = [d_h;d_u];
+
+    f = N*log(2*pi)+2*N*log(var)+0.5*(1/var^2)*transpose(d)*d;
+
+    % find gradients
+    g = zeros(2,1);
+
+    for i = 1:N
+        g(1) = g(1) + d_h(i)*P_h(i,:)*deffN_h + d_u(i)*P_u(i,:)*deffN_u;
+        g(2) = g(2) + d_u(i)*P_u(i,:)*deffK_u;
+    end
+
+    g(1) = g(1)/(var^2);
+    g(2) = g(2)/(var^2);
+
+end
 end
