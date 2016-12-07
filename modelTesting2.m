@@ -1,4 +1,4 @@
-function rmse = modelTesting
+function rmse = modelTesting2
 %testingDataSet
 v_h = csvread('highways.csv',0,1)*0.277778; % m/s
 s_h = sum(v_h)/1000; %km
@@ -264,10 +264,10 @@ scatter([1:M],2.77778e-7*hwys(testing),40,'MarkerEdgeColor',[0.3 .3 0.7],...
               'LineWidth',1.5)
 %plot([1:M],hwys0(testing),'x')
 title('Highways Drive Cycle')
-ylabel('MPGe')
+ylabel('kWh')
 xlabel('Vehicle No.')
 legend('show')
-legend('Model 1','Model 2','Observed')
+legend('Model 1','Model 2','Model 3','Observed')
 
 subplot(2,1,2)
 b2 = bar([1:M],2.77778e-7*[u,u2,u3]);
@@ -279,10 +279,10 @@ scatter([1:M],2.77778e-7*udds(testing),'MarkerEdgeColor',[0.3 .3 0.7],...
               'LineWidth',1.5)
 %plot([1:M],udds0(testing),'x')
 title('Urban Drive Cycle')
-ylabel('MPGe')
+ylabel('kWh')
 xlabel('Vehicle No.')
 legend('show')
-legend('Model 1','Model 2','Observed')
+legend('Model 1','Model 2','Model 3','Observed')
 
 textbox1 = uicontrol('Style', 'text', 'Units', 'norm','Position',[0.91 0.74 .09 .1]);
 set(textbox1, 'String', ['Model 1 RMSE: ' num2str(round(avError1)) ' MPGe']);

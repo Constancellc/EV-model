@@ -5,7 +5,7 @@ may = zeros(24,7); jun = zeros(24,7); jul = zeros(24,7); aug = zeros(24,7);
 sep = zeros(24,7); oct = zeros(24,7); nov = zeros(24,7); dec = zeros(24,7);
 
 % pick a number of journeys to simulate
-N = 100000;
+N = 3778310;
 
 % load your vehicle
 mVehicle = 4250/2.2;
@@ -22,7 +22,7 @@ lengths = round(lengths(:,1)*1609.34);
 energy = zeros(7,1);
 for i = 1:7
     v = scaleArtemis(lengths(i));
-    energy(i) = ev(v,mVehicle,mPassenger,Ta,Tb,Tc);
+    energy(i) = 10^4*ev(v,mVehicle,mPassenger,Ta,Tb,Tc);
 end
 
 % first sample from the month, purpose
@@ -149,6 +149,78 @@ for q = 1:N
 end
 
 
+figure(1)
+subplot(3,4,1)
+plot(jan)
+title('January')
+xlabel('Hour')
+ylabel('kWh')
+legend('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')
+
+subplot(3,4,2)
+plot(feb)
+title('Febuary')
+xlabel('Hour')
+ylabel('kWh')
+
+subplot(3,4,3)
+plot(mar)
+title('March')
+xlabel('Hour')
+ylabel('kWh')
+
+subplot(3,4,4)
+plot(apr)
+title('April')
+xlabel('Hour')
+ylabel('kWh')
+
+subplot(3,4,5)
+plot(may)
+title('May')
+
+subplot(3,4,6)
+plot(jun)
+title('June')
+xlabel('Hour')
+ylabel('kWh')
+
+subplot(3,4,7)
+plot(jul)
+title('July')
+xlabel('Hour')
+ylabel('kWh')
+
+subplot(3,4,8)
+plot(aug)
+title('August')
+xlabel('Hour')
+ylabel('kWh')
+
+subplot(3,4,9)
+plot(sep)
+title('September')
+xlabel('Hour')
+ylabel('kWh')
+
+subplot(3,4,10)
+plot(oct)
+title('October')
+xlabel('Hour')
+ylabel('kWh')
+
+subplot(3,4,11)
+plot(nov)
+title('November')
+xlabel('Hour')
+ylabel('kWh')
+
+subplot(3,4,12)
+plot(dec)
+title('December')
+xlabel('Hour')
+ylabel('kWh')
+%{
 for i = 1:7
     figure(i)
     subplot(3,4,1)
@@ -176,3 +248,5 @@ for i = 1:7
     subplot(3,4,12)
     bar(dec(:,i))
 end
+
+%}
