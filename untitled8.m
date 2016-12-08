@@ -1,6 +1,6 @@
-% THIS VERSION PLOTS THE CONTINUOUS-ISH POWER REQUIREMENT
+% THIS VERSION PLOTS THE CHARGING REQUIREMENT
 
-pPH = 60; % points per hour
+pPH = 6; % points per hour
 l = 24*pPH;
 
 % create a sample journey
@@ -25,14 +25,17 @@ lengths = round(lengths(:,1)*1609.34); % convert from miles to m
 % Then calculate energy expenditure of each trip
 energy = zeros(7,1);
 times = zeros(7,1);
-power = zeros(7,1);
+%power = zeros(7,1);
+chargeTime = zeros(7,1);
 
 for i = 1:7
     v = scaleArtemis(lengths(i));
     times(i) = length(v)/60; % minutes
     times(i) = round(times(i)*pPH/60);
-    energy(i) = 10^5*ev(v,mVehicle,mPassenger,Ta,Tb,Tc);
-    power(i) = energy(i)*3600/length(v);
+    energy(i) = ev(v,mVehicle,mPassenger,Ta,Tb,Tc);
+    chargeTime(i) = round(energy(i)*pPH/4); % 4kW charging
+    %power(i) = energy(i)*3600/length(v);
+    %energy(i) = 10^5*energy(i);
 end
 
 % first sample from the month, purpose
@@ -129,8 +132,20 @@ for q = 1:N
         hour = c;
     end
     
-    offset = round(rand*pPH);%/pointsPerHour;
+    offset = round(rand*pPH);
+    
+    if month == 1
+        for m = 1:chargeTime(purpose)
+            t = (hour-1)*(pPH)+offset+m;
+            if t > 24*pPH
+                t = t-24*pPH;
+            end
+            jan(t,day) = jan(t,day) + 4*10^5;
+        end
+    end
 
+
+    %{
     if month == 1
         for m = 1:times(purpose)
             t = (hour-1)*(pPH)+offset+m;
@@ -250,7 +265,7 @@ for q = 1:N
             dec(t,day) = dec(t,day) + power(purpose);
         end
     end
-    
+    %}
             
     %    jan(hour,day) = jan(hour,day) + energy(purpose);
         
@@ -281,10 +296,11 @@ for q = 1:N
     %}
 end
 
-%figure(1)
-%plot(jan)
+figure(1)
+plot(jan)
 %legend('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')
 
+%{
 figure(1)
 subplot(6,2,1)
 plot(jan)
@@ -336,7 +352,7 @@ title('November')
 subplot(6,2,12)
 plot(dec)
 title('December')
-
+%}
 %{
 for i = 1:7
     figure(i)

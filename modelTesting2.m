@@ -18,6 +18,8 @@ end
 
 a_rms = [sqrt(transpose(a_h)*a_h/T_h);sqrt(transpose(a_u)*a_u/T_u)];
 
+sigmoid =@(z) (1+exp(-z))^-1;
+dSigmoid =@(z) exp(-z)*(1+exp(-z))^-2;
 
 data = csvread('../EPA-Code/pureEVdata.csv',0,3);
 
@@ -210,7 +212,7 @@ avError4 = sqrt(transpose(error_u)*error_u/M);
 
 options = optimoptions('fminunc','Algorithm','trust-region','GradObj','on');%,'DerivativeCheck','on');
 options.MaxFunctionEvaluations = 3000;
-x = fminunc(@dependantEfficiency,[1.1304;-2.6926;-140.3793],options)
+x = fminunc(@dependantEfficiency,[1;1;1],options)
 
 % now testing
 
@@ -219,6 +221,7 @@ for j = 1:M
     
     heff = x(1)+x(2)/vh_av+x(3)/(a_rms(1)*mTest(j));
     ueff = x(1)+x(2)/vu_av+x(3)/(a_rms(2)*mTest(j));
+    heff = sigmoid(heff); ueff = sigmoid(ueff);
     %heff = 1.1304-2.6926/vh_av-140.3793/(a_rms(1)*mTest(j));
     %ueff = 1.1304-2.6926/vu_av-140.3793/(a_rms(2)*mTest(j));
     
@@ -334,6 +337,10 @@ set(textbox4, 'String', ['rms error: ' num2str(avError4) ' MPGe']);
 
     function [f,g] = dependantEfficiency(x)
         
+        sigmoid =@(z) (1+exp(-z))^-1;
+        dSigmoid =@(z) exp(-z)*(1+exp(-z))^-2;
+
+        
         var = 1;%exp(x(1));
         k1 = x(1); k2 = x(2); k3 = x(3);
 
@@ -341,8 +348,10 @@ set(textbox4, 'String', ['rms error: ' num2str(avError4) ' MPGe']);
         g = zeros(3,1);
 
         for v = 1:N
-            eff1 = k1 + k2/vh_av + k3/(mTrain(v)*a_rms(1));
-            eff2 = k1 + k2/vu_av + k3/(mTrain(v)*a_rms(2));
+            eff1a = k1 + k2/vh_av + k3/(mTrain(v)*a_rms(1));
+            eff2a = k1 + k2/vu_av + k3/(mTrain(v)*a_rms(2));
+            
+            eff1 = sigmoid(eff1a); eff2 = sigmoid(eff2a);
             
             eff_h = zeros(T_h,1); eff_u = zeros(T_u,1);
             deff_h = zeros(T_h,1); deff_u = zeros(T_u,1);
@@ -367,11 +376,14 @@ set(textbox4, 'String', ['rms error: ' num2str(avError4) ' MPGe']);
             dH = predictions(v,1)-y_h(v); dU = predictions(v,2)-y_u(v);
 
             %g(v+1) = (1/var^2)*(dH*P_h(v,:)*deff_h+dU*P_u(v,:)*deff_u);
-            g(1) = g(1) + (1/var^2)*(dH*P_h(v,:)*deff_h+dU*P_u(v,:)*deff_u);
-            g(2) = g(2) + (1/var^2)*(dH*P_h(v,:)*deff_h/vh_av...
-                +dU*P_u(v,:)*deff_u/vu_av);
-            g(3) = g(3) + (1/var^2)*(dH*P_h(v,:)*deff_h/(mTrain(v)*a_rms(1))+...
-                dU*P_u(v,:)*deff_u/(mTrain(v)*a_rms(2)));
+            g(1) = g(1) + (1/var^2)*(dH*P_h(v,:)*deff_h*dSigmoid(eff1a)+...
+                dU*P_u(v,:)*deff_u*dSigmoid(eff2a));
+            g(2) = g(2) + (1/var^2)*(dH*P_h(v,:)*deff_h/vh_av*dSigmoid(eff1a)...
+                +dU*P_u(v,:)*deff_u*dSigmoid(eff2a)/vu_av);
+            g(3) = g(3) + (1/var^2)*(dH*P_h(v,:)*deff_h/(mTrain(v)*a_rms(1))*dSigmoid(eff1a)+...
+                dU*P_u(v,:)*deff_u*dSigmoid(eff2a)/(mTrain(v)*a_rms(2)));
+            
+            
 
         end
     

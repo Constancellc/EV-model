@@ -19,6 +19,8 @@ for j = 1:T_u-1
 end
 
 [mass,targetA,targetB,targetC,hwys,udds] = getPureEVData;
+data = csvread('../EPA-Code/ev_data.csv',0,2);
+horsepower = data(:,2);
 
 % converting from MPGe to energy consumption
 hwys = 75384669*s_h./hwys;
@@ -44,11 +46,11 @@ for j = 1:N
 end
 % {
 options = optimoptions('fminunc','Algorithm','trust-region','GradObj','on');%,'DerivativeCheck','on');
-options.StepTolerance = 10e-10;
-options.MaxFunctionEvaluations = 300;
-options.MaxIterations = 400;
-options.FunctionTolerance = 1e-6;
-x = fminunc(@likelihood,[1;1;1],options)
+%options.StepTolerance = 10e-10;
+%options.MaxFunctionEvaluations = 300;
+%options.MaxIterations = 400;
+%options.FunctionTolerance = 1e-6;
+x = fminunc(@likelihood,[1;10^-4],options)
 %x=fmincon(@likelihood,[1;1;1])
 exp(x(1))
 exp(x(2))
@@ -147,49 +149,31 @@ plot([1:N],udds,'x')
 
 
 function [f,g] = likelihood(x)
-    %{
-    sigmoid =@(k) (1+exp(-k))^-1; 
-    dSigmoid =@(k) -exp(-k)*(1+exp(-k))^2;
-
-%}
-    %k1 = exp(x(1)); k2 = exp(x(2)); k3 = exp(x(3));
-    k1 = x(1); k2 = x(2); k3 = x(3);
+    k1 = x(1); k2 = x(2);
     
     d_h = zeros(N,1); d_u = zeros(N,1);
     
-    g = zeros(3,1);
-    %g = zeros(2,1);
+    g = zeros(2,1);
     
     for j = 1:N
-        ph_rms = sum(abs(mass(j)*a_h))/T_h; pu_rms = sum(abs(mass(j)*a_u))/T_u;
-        %ph_rms = sqrt(sum(P_h(j,:).^2)/T_h);
-        %pu_rms = sqrt(sum(P_u(j,:).^2)/T_u);
-        
-        kh = k1+k2*vh_av+k3*ph_rms;
-        ku = k1+k2*vu_av+k3*pu_rms;
-        
-        %effh = k1+k2/vh_av+k3/ph_rms;
-        %effu = k1+k2/vu_av+k3/pu_rms;
-        
-        effh = 1/kh; effu = 1/ku;
-        %effh = sigmoid(kh); effu = sigmoid(ku);
+        eff = k1*(1 + k2*horsepower(j));
         
         eff_h = zeros(T_h,1); eff_u = zeros(T_u,1); 
         deff_h = zeros(T_h,1); deff_u = zeros(T_u,1); 
         
         for i = 1:T_u-1
             if a_u(i) < 0
-                eff_u(i) = effu; deff_u(i) = 1;
+                eff_u(i) = eff; deff_u(i) = 1;
             else
-                eff_u(i) = 1/effu; deff_u(i) = -1/effu^2;
+                eff_u(i) = 1/eff; deff_u(i) = -1/eff^2;
             end
         end
 
         for i = 1:T_h-1
             if a_h(i) < 0
-                eff_h(i) = effh; deff_h(i) = 1;
+                eff_h(i) = eff; deff_h(i) = 1;
             else
-                eff_h(i) = 1/effh; deff_h(i) = -1/effh^2;
+                eff_h(i) = 1/eff; deff_h(i) = -1/eff^2;
             end
         end
     
@@ -197,22 +181,12 @@ function [f,g] = likelihood(x)
         d_h(j) = (P_h(j,:)*eff_h)-hwys(j);
         d_u(j) = (P_u(j,:)*eff_u)-udds(j);
         
-        g(1) = g(1) + 2*d_h(j)*P_h(j,:)*deff_h*(-1/kh^2) + ...
-            2*d_u(j)*P_u(j,:)*deff_u*(-1/ku^2);
-        g(2) = g(2) + 2*d_h(j)*P_h(j,:)*deff_h*(vh_av)*(-1/kh^2) + ...
-            2*d_u(j)*P_u(j,:)*deff_u*vu_av*(-1/ku^2);
-        g(3) = g(3) + 2*d_h(j)*P_h(j,:)*deff_h*ph_rms*(-1/kh^2) + ...
-            2*d_u(j)*P_u(j,:)*deff_u*pu_rms*(-1/ku^2);
+        g(1) = g(1) + 2*(d_h(j)*P_h(j,:)*deff_h + ...
+            d_u(j)*P_u(j,:)*deff_u)*(1+k2*horsepower(j));
+        g(2) = g(2) + k1*horsepower(j)*(2*d_h(j)*P_h(j,:)*deff_h + ...
+            2*d_u(j)*P_u(j,:)*deff_u);
+
         
-        
-        %{
-        g(1) = g(1) + 2*d_h(j)*P_h(j,:)*deff_h*dSigmoid(kh) + ...
-            2*d_u(j)*P_u(j,:)*deff_u*dSigmoid(ku);
-        g(2) = g(2) + 2*d_h(j)*P_h(j,:)*deff_h*vh_av*dSigmoid(kh) + ...
-            2*d_u(j)*P_u(j,:)*deff_u*vu_av*dSigmoid(ku);
-        g(3) = g(3) + 2*d_h(j)*P_h(j,:)*deff_h*ph_rms*dSigmoid(kh) + ...
-            2*d_u(j)*P_u(j,:)*deff_u*pu_rms*dSigmoid(ku);
-        %}
     end
     
     %g(1) = g(1)*k1; g(2) = g(2)*k2; g(3) = g(3)*k3; 
