@@ -3,6 +3,10 @@
 pPH = 60; % points per hour
 l = 24*pPH;
 
+NW = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
+    zeros(l,7),'may',zeros(l,7),'jun',zeros(l,7),'jul',zeros(l,7),'aug',...
+    zeros(l,7),'sep',zeros(l,7),'oct',zeros(l,7),'nov',zeros(l,7),'dec',...
+    zeros(l,7));
 % create a sample journey
 jan = zeros(l,7); feb = zeros(l,7); mar = zeros(l,7); apr = zeros(l,7);
 may = zeros(l,7); jun = zeros(l,7); jul = zeros(l,7); aug = zeros(l,7);
