@@ -1,54 +1,33 @@
-function untitled11
-% THIS VERSION PLOTS THE CONTINUOUS-ISH POWER REQUIREMENT, AND CONSIDERS
-% TYPE OF RESIDENCE, NOT GEOGRAPHIC LOCATION
+function untitled10
+% THIS VERSION PLOTS THE CONTINUOUS-ISH POWER REQUIREMENT
 
 pPH = 6; % points per hour
 l = 24*pPH;
 
 % First initialise a structure for each of the regions
-NE = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
+UC = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
     zeros(l,7),'may',zeros(l,7),'jun',zeros(l,7),'jul',zeros(l,7),'aug',...
     zeros(l,7),'sep',zeros(l,7),'oct',zeros(l,7),'nov',zeros(l,7),'dec',...
     zeros(l,7));
-NW = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
+UCT = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
     zeros(l,7),'may',zeros(l,7),'jun',zeros(l,7),'jul',zeros(l,7),'aug',...
     zeros(l,7),'sep',zeros(l,7),'oct',zeros(l,7),'nov',zeros(l,7),'dec',...
     zeros(l,7));
-YH = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
+RT = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
     zeros(l,7),'may',zeros(l,7),'jun',zeros(l,7),'jul',zeros(l,7),'aug',...
     zeros(l,7),'sep',zeros(l,7),'oct',zeros(l,7),'nov',zeros(l,7),'dec',...
     zeros(l,7));
-EM = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
-    zeros(l,7),'may',zeros(l,7),'jun',zeros(l,7),'jul',zeros(l,7),'aug',...
-    zeros(l,7),'sep',zeros(l,7),'oct',zeros(l,7),'nov',zeros(l,7),'dec',...
-    zeros(l,7));
-WM = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
-    zeros(l,7),'may',zeros(l,7),'jun',zeros(l,7),'jul',zeros(l,7),'aug',...
-    zeros(l,7),'sep',zeros(l,7),'oct',zeros(l,7),'nov',zeros(l,7),'dec',...
-    zeros(l,7));
-E = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
-    zeros(l,7),'may',zeros(l,7),'jun',zeros(l,7),'jul',zeros(l,7),'aug',...
-    zeros(l,7),'sep',zeros(l,7),'oct',zeros(l,7),'nov',zeros(l,7),'dec',...
-    zeros(l,7));
-LDN = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
-    zeros(l,7),'may',zeros(l,7),'jun',zeros(l,7),'jul',zeros(l,7),'aug',...
-    zeros(l,7),'sep',zeros(l,7),'oct',zeros(l,7),'nov',zeros(l,7),'dec',...
-    zeros(l,7));
-SE = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
-    zeros(l,7),'may',zeros(l,7),'jun',zeros(l,7),'jul',zeros(l,7),'aug',...
-    zeros(l,7),'sep',zeros(l,7),'oct',zeros(l,7),'nov',zeros(l,7),'dec',...
-    zeros(l,7));
-SW = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
+RV = struct('jan',zeros(l,7),'feb',zeros(l,7),'mar',zeros(l,7),'apr',...
     zeros(l,7),'may',zeros(l,7),'jun',zeros(l,7),'jul',zeros(l,7),'aug',...
     zeros(l,7),'sep',zeros(l,7),'oct',zeros(l,7),'nov',zeros(l,7),'dec',...
     zeros(l,7));
 
-data = [NE NW YH EM WM E LDN SE SW];
+data = [UC UCT RT RV];
 
 % matrix with rows: purpose and cols: region
-lengths = csvread('NTS/regionLength.csv',1,1)*1609.34;
+lengths = csvread('NTS/FINALregionTypePurposeLength.csv',1,1)*1609.34;
 % pick a number of journeys to simulate
-N = round(sum(sum(csvread('NTS/regionTrips.csv',4,1)))*10^-4);
+N = round(sum(sum(csvread('NTS/FINALregionTrips.csv',4,1)))*10^-5);
 
 % load your vehicle
 mVehicle = 3625/2.2;
@@ -67,20 +46,26 @@ times = zeros(7,9);
 power = zeros(7,9);
 
 for i = 1:7
-    for j = 1:9
+    for j = 1:4
         v = scaleArtemis(lengths(i,j));
         times(i,j) = length(v)/60; % minutes
         times(i,j) = round(times(i,j)*pPH/60);
-        energy(i,j) = 10^4*ev(v,mVehicle,mPassenger,Ta,Tb,Tc);
+        energy(i,j) = 10^5*ev(v,mVehicle,mPassenger,Ta,Tb,Tc);
         power(i,j) = energy(i,j)*3600/length(v);
     end
 end
 
+%{
+samples = [12938;13829;2982;2934];
+samples = samples/sum(samples);
+
+Nuc = samples(1)*N; Nuct = samples(2)*N; Nrt = samples(3)*N; Nrv = 
+%}
 % first sample from the month, purpose
-mp = csvread('NTS/purpose_month.csv',1,1);
-dp = csvread('NTS/purpose_day.csv',1,1);
-tp = csvread('NTS/purpose_time.csv',1,1);
-rp = csvread('NTS/regionPurpose.csv',1,1);
+mp = csvread('NTS/FINALpurposeMonth.csv',1,1);
+dp = csvread('NTS/FINALpurposeDay.csv',1,1);
+tp = csvread('NTS/FINALpurposeStartHour.csv',1,1);
+rp = csvread('NTS/FINALregionTypePurpose.csv',1,1);
 
 function out = sampleGivenPurpose(joint,purpose,max)
     pdf = joint(purpose,:); 
@@ -123,7 +108,7 @@ for q = 1:N
     sample = rand;
 
     c = 1;
-    while cdf(c) <= sample
+    while cdf(c) <= sample && c<length(cdf)
         c = c+1;
     end
     
@@ -143,7 +128,7 @@ for q = 1:N
     
     % lets find the region
     
-    region = sampleGivenPurpose(rp,purpose,9);
+    region = sampleGivenPurpose(rp,purpose,4);
 
     day = sampleGivenPurpose(dp,purpose,7);
 
@@ -286,10 +271,11 @@ for q = 1:N
     end
 end
 
-titles = {'NE','NW','Y+H','EM','WM','E','LDN','SE','SW'};
+titles = {'Urban Conurbation','Urban City and Town','Rural Town and Fringe'...
+    'Rural Village, Hamlet and Isolated Dwelling'};
 figure(1)
-for i = 1:9
-    subplot(5,2,i)
+for i = 1:4
+    subplot(4,1,i)
     plot(data(i).feb)
     title(titles(i))
 end
