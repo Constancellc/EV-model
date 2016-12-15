@@ -47,7 +47,7 @@ for i = 1:length(data)
     end
 end
 
-N = length(training)
+N = length(training);
 M = length(testing);
 
 %horsepower = data(:,1); mass = data(:,3)/2.2; axleRatio = data(:,4);

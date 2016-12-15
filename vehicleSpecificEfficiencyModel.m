@@ -42,26 +42,22 @@ for j = 1:N
 end
 
 options = optimoptions('fminunc','Algorithm','trust-region','GradObj','on','DerivativeCheck','on');
-x = fminunc(@likelihood,[0.3;ones(N,1)],options)
+[x,fval] = fminunc(@likelihood2,[ones(N,1)],options)
 
-csvwrite('efficiencies.csv',x(2:end))
+%csvwrite('efficiencies.csv',x(2:end))
 %predictions = [P_h*eff_h,P_u*eff_u];
 %error = sd*ones(N,1);
 
 % {
 % I really want to covert back to MPGe
-hwys = 75384669*s_h./hwys;
-udds = 75384669*s_u./udds;
+%hwys = 75384669*s_h./hwys;
+%udds = 75384669*s_u./udds;
 % {
-h = 75384669*s_h./predictions(:,1);
-%h_l = 75384669*s_h./(predictions(:,1)+error);
-%h_u = 75384669*s_h./(predictions(:,1)-error);
+h = predictions(:,1);
+%h = 75384669*s_h./predictions(:,1);
 
-u = 75384669*s_u./predictions(:,2);
-%u_l = 75384669*s_u./(predictions(:,2)+error);
-%u_u = 75384669*s_u./(predictions(:,2)-error);
-%}
-
+%u = 75384669*s_u./predictions(:,2);
+u = predictions(:,2);
 errors_h = h-hwys; errors_u = u-udds;
 
 h_u = zeros(N,1); h_l = zeros(N,1); u_u = zeros(N,1); u_l = zeros(N,1);
@@ -79,25 +75,29 @@ for j = 1:N
         u_l(j) = errors_u(j);
     end
 end
-av1 = sum(abs(errors_h))/N
-av2 = sum(abs(errors_u))/N
+av1 = sum(abs(errors_h))/N;
+av2 = sum(abs(errors_u))/N;
 %}
 % {
 figure(1)
 subplot(2,1,1)
-errorbar([1:N],h,h_l,h_u)
+b = bar([hwys,h]);
+b(1).FaceColor = [0.6 0.9 1];
+b(2).FaceColor = [0 0.7 0.7];
+%errorbar([1:N],h,h_l,h_u)
 %plot([1:N],h,'o')
-hold on
-plot([1:N],hwys,'x')
+%hold on
+%plot([1:N],hwys,'x')
 title('Predicted vs. Observed MPGe on Highways Drive Cycle')
 ylabel('MPGe')
 xlabel('Vehicle No.')
 
 subplot(2,1,2)
-errorbar([1:N],u,u_l,u_u)
+bar([udds,u])
+%errorbar([1:N],u,u_l,u_u)
 %plot([1:N],u,'o')
-hold on
-plot([1:N],udds,'x')
+%hold on
+%plot([1:N],udds,'x')
 title('Predicted vs. Observed MPGe on Urban Drive Cycle')
 ylabel('MPGe')
 xlabel('Vehicle No.')
@@ -137,8 +137,8 @@ plot([1:N],udds,'x')
 %}
 
 function [f,g] = likelihood(x)
-    var = exp(x(1));
-    eff = x(2:end);
+    
+    eff = x;
     %k = 0.93;
     
     predictions = zeros(N,2);
@@ -176,16 +176,56 @@ function [f,g] = likelihood(x)
         predictions(v,:) = [P_h(v,:)*eff_h,P_u(v,:)*eff_u];
         dH = predictions(v,1)-hwys(v); dU = predictions(v,2)-udds(v);
         
-        g(v+1) = (1/var^2)*(dH*P_h(v,:)*deff_h+dU*P_u(v,:)*deff_u);
+        g(v) = 2*(dH*P_h(v,:)*deff_h+dU*P_u(v,:)*deff_u);
     end
     
     d = predictions-[hwys,udds];
     d = [d(:,1);d(:,2)];
 
-    f = N*log(2*pi)+2*N*log(var)+0.5*(1/var^2)*transpose(d)*d;
+    f = transpose(d)*d;
 
-    g(1) = (2*N/var)-(1/var^3)*(transpose(d)*d); % CHECKED
-    g(1) = g(1)*var;
+end
+function [f,g] = likelihood2(x)
+    
+    eff = x;
+    %k = 0.93;
+    
+    predictions = zeros(N,2);
+    g = zeros(N,1);
+
+    
+    for v = 1:N
+        eff_h = zeros(T_h,1); eff_u = zeros(T_u,1);
+        deff_h = zeros(T_h,1); deff_u = zeros(T_u,1);
+
+
+        for i = 1:T_u-1
+            if a_u(i) < 0
+                eff_u(i) = eff(v); deff_u(i) = 1;
+            else
+                eff_u(i) = 1/(eff(v)); deff_u(i) = -1/(eff(v)^2);
+            end
+        end
+        
+        
+        for i = 1:T_h-1
+            if a_h(i) < 0
+                eff_h(i) = eff(v); deff_h(i) = 1;
+            else
+                eff_h(i) = 1/eff(v); deff_h(i) = -1/eff(v)^2;
+            end
+        end
+        
+        predictions(v,:) = [P_h(v,:)*eff_h,P_u(v,:)*eff_u];
+        dH = predictions(v,1)-hwys(v);% dU = predictions(v,2)-udds(v);
+        
+        g(v) = 2*(dH*P_h(v,:)*deff_h);%+dU*P_u(v,:)*deff_u);
+    end
+    
+    d = predictions-[hwys,udds];
+    d = [d(:,1)];%;d(:,2)];
+
+    f = transpose(d)*d;
 
 end
 
